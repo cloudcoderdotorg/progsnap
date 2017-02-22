@@ -2,7 +2,8 @@
 
 from progsnap import ProgsnapError
 from progsnap import TagHandler
-from progsnap import Assignment
+from progsnap import Test
+from progsnap import Activity
 from progsnap import Student
 from progsnap import Position
 from progsnap import Edit
