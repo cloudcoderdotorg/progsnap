@@ -1,3 +1,5 @@
+from setuptools import setup
+
 setup(name='progsnap',
       version='0.1.0',
       description='Library for reading Progsnap datasets',

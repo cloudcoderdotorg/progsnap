@@ -85,7 +85,7 @@ def _ishistfile(s):
 #    return int(m.group(1))
 
 # RE pattern to match just the student id part of a student work history filename
-_extractidre = re.compile("^[A-Za-z0-9_-]+")
+_extractidre = re.compile("^([A-Za-z0-9_-]+)")
 
 # Extract student id from a student work history filename
 def _extractid(s):
@@ -247,18 +247,18 @@ class Test(_HasProps):
     def invisible(self):
         return self._setdefault('invisible', False)
 
-# This class represents both an Assignment value read from
-# the assignments file, and also all metadata found by reading
-# the corresponding assignment file.
-class Assignment(_HasProps):
+# This class represents both an Activity value read from
+# the activities file, and also all metadata found by reading
+# the corresponding activity file.
+class Activity(_HasProps):
     def __init__(self, jsobj, access):
-        super(Assignment, self).__init__(jsobj)
+        super(Activity, self).__init__(jsobj)
         self._access = access
 
         # Create tests list
         self.setprop('tests', [])
 
-        # Read all additional info from the corresponding assignment file
+        # Read all additional info from the corresponding activity file
         self._read_assign_file()
 
     def _read_assign_file(self):
@@ -315,11 +315,11 @@ class TestResults(_HasProps):
 
 # Work history object: events are loaded on demand
 class WorkHistory():
-    def __init__(self, access, assign_num, student_num, filename, sortworkhistory):
+    def __init__(self, access, assign_num, student_id, filename, sortworkhistory):
         self._events = []
         self._access = access
         self._assign_num = assign_num
-        self._student_num = student_num
+        self._student_id = student_id
         self._filename = filename
         self._loaded = False
         self._sortworkhistory = sortworkhistory
@@ -327,8 +327,8 @@ class WorkHistory():
     def assign_num(self):
         return self._assign_num
 
-    def student_num(self):
-        return self._student_num
+    def student_id(self):
+        return self._student_id
 
     def _load_events(self):
         if not self._loaded:
@@ -351,7 +351,7 @@ class WorkHistory():
 
     # Find a single edit event with specified snapid.
     # Raises an error if multiple edit events are found (i.e.,
-    # because the assignment has multiple source files).
+    # because the activity has multiple source files).
     # Returns None if there is no edit event with the specified
     # snapid.
     def find_single_edit_event_with_snapid(self, snapid):
@@ -418,12 +418,12 @@ class Dataset(_HasProps):
         else:
             raise ProgsnapError("Path {} doesn't exist".format(path))
 
-        self._assignments = []
-        self._assignments_by_number = {}
+        self._activities = []
+        self._activities_by_number = {}
         self._students = []
         self._students_by_id = {}
-        # Map assignment numbers to list of work histories for the assignment
-        self._assignment_work_histories = {}
+        # Map activity numbers to list of work histories for the activity
+        self._activity_work_histories = {}
         # Map student ids to list of work histories for the student
         self._student_work_histories = {}
 
@@ -436,12 +436,12 @@ class Dataset(_HasProps):
         self._students.append(student)
         self._students_by_id[student.id()] = student
 
-    def _add_assignment(self, jsobj):
-        # Note that creating the Assignment object will also
-        # read the metadata from the corresponding assignment file.
-        assignment = Assignment(jsobj, self._access)
-        self._assignments.append(assignment)
-        self._assignments_by_number[assignment.number()] = assignment
+    def _add_activity(self, jsobj):
+        # Note that creating the Activity object will also
+        # read the metadata from the corresponding activity file.
+        activity = Activity(jsobj, self._access)
+        self._activities.append(activity)
+        self._activities_by_number[activity.number()] = activity
 
     def _read(self):
         # Dataset file tag handler
@@ -453,10 +453,10 @@ class Dataset(_HasProps):
         with self._access.open("dataset.txt") as f:
             _scan(f, ds_th)
 
-        # Assignments file tag handler
-        assign_th = TagHandler(callbacks={'assignment':lambda tag, value: self._add_assignment(value)})
+        # Activities file tag handler
+        assign_th = TagHandler(callbacks={'activity':lambda tag, value: self._add_activity(value)})
 
-        with self._access.open("assignments.txt") as f:
+        with self._access.open("activities.txt") as f:
             _scan(f, assign_th)
 
         # Students file is optional: read it if present
@@ -468,7 +468,7 @@ class Dataset(_HasProps):
                 _scan(f, students_th)
 
         # Find all of the work history files and organize them
-        # by assignment and by student
+        # by activity and by student
         if self._access.isdir("history"):
             #print("History list: {}".format(self._access.listdir("history")))
             dirs = [e for e in self._access.listdir("history") if (_isint(e) and self._access.isdir("history/{}".format(e)))]
@@ -492,15 +492,15 @@ class Dataset(_HasProps):
                     if student_id not in self._students_by_id:
                         self._add_student({'id':student_id, 'instructor':False})
 
-                    wh = WorkHistory(self._access, assign_num, student_num, hfpath, self._sortworkhistory)
-                    self._assignment_work_histories.setdefault(assign_num, []).append(wh)
-                    self._student_work_histories.setdefault(student_num, []).append(wh)
+                    wh = WorkHistory(self._access, assign_num, student_id, hfpath, self._sortworkhistory)
+                    self._activity_work_histories.setdefault(assign_num, []).append(wh)
+                    self._student_work_histories.setdefault(student_id, []).append(wh)
 
-    def assignments(self):
-        return self._assignments
+    def activities(self):
+        return self._activities
 
-    def assignment_for_number(self, assign_num):
-        return self._assignments_by_number[assign_num]
+    def activity_for_number(self, assign_num):
+        return self._activities_by_number[assign_num]
 
     def students(self):
         return self._students
@@ -508,19 +508,19 @@ class Dataset(_HasProps):
     def student_for_id(self, sid):
         return self._students_by_id[sid]
 
-    def work_histories_for_assignment(self, assignment):
-        return self._assignment_work_histories.setdefault(int(assignment.number()), [])
+    def work_histories_for_activity(self, activity):
+        return self._activity_work_histories.setdefault(int(activity.number()), [])
 
     def work_histories_for_student(self, student):
-        return self._student_work_histories.setdefault(int(student.number()), [])
+        return self._student_work_histories.setdefault(student.id(), [])
 
-    def work_history_for_student_and_assignment(self, student, assignment):
+    def work_history_for_student_and_activity(self, student, activity):
         student_work_histories = self.work_histories_for_student(student)
         for wh in student_work_histories:
-            if wh.assign_num() == assignment.number():
+            if wh.assign_num() == activity.number():
                 return wh
-        raise ProgsnapError("No work history for student {}, assignment {}".format(
-            student.number(), assignment.number()))
+        raise ProgsnapError("No work history for student {}, activity {}".format(
+            student.id(), activity.number()))
 
 def _line_chunks(text):
     pos = 0
