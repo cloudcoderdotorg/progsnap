@@ -13,5 +13,3 @@ from progsnap import WorkHistory
 from progsnap import Dataset
 from progsnap import TextDocument
 from progsnap import EditApplicator
-
-__all__ = ['progsnap']
