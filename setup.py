@@ -7,5 +7,5 @@ setup(name='progsnap',
       author='David Hovemeyer',
       author_email='david.hovemeyer@gmail.com',
       license='MIT',
-      packages=['progsnap'],
+      py_modules=['progsnap'],
       zip_safe=False)
